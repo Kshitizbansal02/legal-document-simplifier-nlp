@@ -1,7 +1,6 @@
 🧠 AI-Powered Legal Document Simplifier (Legal NLP)
 
 
-⸻
 
 📌 Overview
 
@@ -10,7 +9,6 @@ This project presents an AI-powered NLP system that transforms such documents in
 
 The system leverages state-of-the-art transformer models along with linguistic processing techniques to ensure semantic accuracy and improved readability.
 
-⸻
 
 🎯 Problem Statement
 
@@ -21,7 +19,6 @@ Legal and policy documents:
 
 👉 There is a clear gap between legal information and public understanding.
 
-⸻
 
 💡 Proposed Solution
 
@@ -33,7 +30,6 @@ We developed a system that:
 
 👉 The system bridges the gap between technical legal language and common users.
 
-⸻
 
 ⚙️ System Architecture
 
@@ -52,8 +48,6 @@ Readability Scoring (Flesch Reading Ease)
 Final Simplified Output
 
 
-⸻
-
 🚀 Features
 	•	🔍 Abstractive Summarization
 	•	Uses transformer models to condense long legal text
@@ -68,7 +62,6 @@ Final Simplified Output
 	•	⚡ End-to-End NLP Pipeline
 	•	Fully automated processing from input to output
 
-⸻
 
 🧠 NLP Techniques Used
 
@@ -79,7 +72,6 @@ Named Entity Recognition	Extract important entities
 Readability Metrics	Evaluate simplification quality
 
 
-⸻
 
 💻 Tech Stack
 	•	Language: Python
@@ -87,7 +79,6 @@ Readability Metrics	Evaluate simplification quality
 	•	Frontend: Streamlit
 	•	ML Models: BART, T5
 
-⸻
 
 ▶️ Installation & Setup
 
@@ -111,8 +102,6 @@ python -m spacy download en_core_web_sm
 streamlit run app.py
 
 
-⸻
-
 📈 Example
 
 🔹 Input:
@@ -127,22 +116,21 @@ streamlit run app.py
 	•	Readability Score: Low → High
 	•	Complexity: Reduced
 
-⸻
-
+	
 🎯 Impact
 	•	Enhances accessibility of legal documents
 	•	Reduces misinterpretation of policies
 	•	Helps non-experts understand legal information
 	•	Useful for government, education, and public services
 
-⸻
+
 
 ⚠️ Limitations
 	•	May slightly simplify legal precision
 	•	Depends on pretrained model accuracy
 	•	Requires computational resources
 
-⸻
+
 
 🔮 Future Improvements
 	•	🌍 Multi-language support
@@ -151,14 +139,14 @@ streamlit run app.py
 	•	📊 Dashboard for analytics
 	•	🤖 Fine-tuned legal-specific models
 
-⸻
+
 
 👨‍💻 Author
 
 Kshitiz Bansal
 B.Tech CSE (AIML)
 
-⸻
+
 
 ⭐ Support
 
@@ -166,14 +154,12 @@ If you found this project useful:
 	•	⭐ Star this repository
 	•	🍴 Fork and improve
 
-⸻
 
 📜 License
 
 This project is for academic and educational purposes.
 :::
 
-⸻
 
 🏆 WHAT THIS DOES FOR YOU
 
@@ -183,7 +169,6 @@ After adding this:
 	•	Recruiters see real NLP project
 	•	You stand out from other students
 
-⸻
 
 ⚡ NEXT STEP
 
@@ -192,9 +177,3 @@ Run:
 git add README.md
 git commit -m "Upgraded professional README"
 git push
-
-
-⸻
-
-If you want next level:
-👉 I can add architecture diagram + deployment link (live demo) 🚀
