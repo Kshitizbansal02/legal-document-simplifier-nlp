@@ -3,3 +3,8 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
+# .gitignore
+.env
+venv/
+__pycache__/
+*.pkl
