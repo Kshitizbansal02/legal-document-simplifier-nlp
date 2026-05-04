@@ -13,7 +13,7 @@ This system reads any legal clause and instantly tells you:
 - **How risky it is** with a confidence score
 - **What similar clauses** look like in real contracts
 
-Built as an NLP mini-project using a five-stage pipeline: anonymization → embedding → risk classification → LLM explanation → semantic retrieval.
+Built as an NLP mini-project using a six-stage pipeline: OCR/file extraction → input validation → anonymization → embedding → risk classification → LLM explanation → semantic retrieval.
 
 ---
 
@@ -21,7 +21,7 @@ Built as an NLP mini-project using a five-stage pipeline: anonymization → embe
 
 When you ask ChatGPT to simplify a legal clause, it guesses from training data — it has no access to real labeled contracts and no way to show you what similar clauses look like in practice.
 
-This system is different in three ways:
+This system is different:
 
 | Feature | This System | ChatGPT |
 |---|---|---|
@@ -29,7 +29,9 @@ This system is different in three ways:
 | Grounding | Retrieves real clauses from 13,000+ labeled contracts | Generates from training data |
 | Risk Score | Trained classifier with confidence % | Generic opinion |
 | Similar Clauses | Cosine similarity over real SEC-filed contracts | None |
-| Architecture | 5-stage NLP pipeline | Single prompt |
+| File Input | PDF + scanned images via OCR | Text only |
+| Input Validation | Rejects non-legal content before pipeline | No filtering |
+| Architecture | 6-stage NLP pipeline | Single prompt |
 
 ---
 
@@ -42,13 +44,27 @@ This system is different in three ways:
 | Cosine Similarity Search | scikit-learn | Retrieve most similar real clauses from database |
 | Text Classification | Logistic Regression on embeddings | Predict risk level (low / medium / high) with confidence |
 | Abstractive Generation | LLaMA 3.1 via Groq | Generate plain-English simplification |
+| OCR | Tesseract v5 + PyMuPDF | Extract text from scanned PDFs and images |
+| Input Validation | Keyword heuristics + regex | Reject non-legal content before pipeline |
 
 ---
 
 ## ⚙️ System Architecture
 
 ```
-Input Legal Text
+Input (Text / PDF / Image)
+       │
+       ▼
+[ File Extractor ]       PyMuPDF → digital PDF text extraction
+       │                 Tesseract OCR → scanned PDFs & images
+       │                 Smart fallback: digital first, OCR if sparse
+       │
+       ▼
+[ Input Validator ]      3-stage check:
+       │                 1. Length & sanity (min 20 chars, min 5 words)
+       │                 2. Instant-reject (greetings, code, SQL, emoji)
+       │                 3. Legal keyword check (80-word legal vocabulary)
+       │                 → Rejects non-legal content with clear error message
        │
        ▼
 [ Anonymizer ]           spaCy NER → replace PERSON, ORG, DATE, MONEY
@@ -90,10 +106,14 @@ The clause database and risk classifier are trained on the **CUAD (Contract Unde
 ## 🚀 Features
 
 - 🔒 **Privacy-Preserving** — entities anonymized before any external API call
+- 📄 **Multi-Format Input** — accepts PDF (digital + scanned) and images (PNG, JPG, TIFF, BMP)
+- 🔍 **OCR Support** — Tesseract v5 extracts text from scanned documents automatically
+- 🛡️ **Input Validation** — rejects non-legal content before hitting the NLP pipeline
 - 📊 **Risk Classification** — trained classifier returns `low / medium / high` + confidence %
 - 🔍 **Semantic Retrieval** — finds real similar clauses from 13,000+ labeled examples
 - 💬 **Plain English Output** — LLM explains the clause in language a non-lawyer can understand
-- ✅ **41 Tested Cases** — full pytest suite covering unit + integration + edge cases
+- ✅ **55 Tested Cases** — full pytest suite covering unit + integration + edge cases
+- 🌐 **React Frontend** — modern dark-theme UI with drag-and-drop file upload
 
 ---
 
@@ -106,7 +126,9 @@ The clause database and risk classifier are trained on the **CUAD (Contract Unde
 | Embeddings | Sentence-Transformers `all-MiniLM-L6-v2` |
 | Classifier | scikit-learn LogisticRegression |
 | LLM | LLaMA 3.1 8B via Groq API |
-| Frontend | React (v0) |
+| OCR | Tesseract v5 + PyMuPDF + Pillow |
+| Input Validation | Custom heuristic validator |
+| Frontend | React + Next.js (v0) |
 | Testing | pytest + FastAPI TestClient |
 
 ---
@@ -126,6 +148,11 @@ source venv/bin/activate     # Mac/Linux
 # Install dependencies
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
+
+# Install Tesseract OCR (required for image/scanned PDF support)
+# Windows: https://github.com/UB-Mannheim/tesseract/wiki
+# Ubuntu:  sudo apt-get install tesseract-ocr
+# macOS:   brew install tesseract
 
 # Set your Groq API key
 echo GROQ_API_KEY=your_key_here > .env
@@ -147,12 +174,14 @@ API docs available at: `http://localhost:8000/docs`
 python -m pytest tests/ -v
 ```
 
-41 tests across 5 categories:
+55 tests across 6 categories:
 - `TestHealth` — API startup and model loading
 - `TestAnonymizer` — NER entity detection and restoration
 - `TestSimilarity` — embedding search and score ordering
 - `TestRiskPrediction` — classifier output validation
 - `TestAnalyzeEndpoint` — full pipeline integration
+- `TestFileExtractor` — OCR and PDF extraction
+- `TestUploadEndpoint` — file upload endpoint integration
 - `TestEdgeCases` — empty input, long input, mixed language
 
 ---
@@ -189,13 +218,47 @@ python -m pytest tests/ -v
 }
 ```
 
+### `POST /api/v1/upload`
+
+**Request:** multipart/form-data with `file` field (PDF or image)
+
+**Response:** Same as `/analyze` plus:
+```json
+{
+  "extraction_meta": {
+    "filename": "contract.pdf",
+    "file_type": ".pdf",
+    "characters_extracted": 1024,
+    "extraction_method": "digital"
+  }
+}
+```
+
+**Validation errors (422):** Returned when uploaded file does not contain legal text.
+
+---
+
+## 🛡️ Input Validation
+
+The system validates all input (text and file uploads) before processing:
+
+| Check | Description |
+|---|---|
+| Length | Minimum 20 characters, maximum 50,000 |
+| Word count | Minimum 5 words |
+| Pattern rejection | Blocks greetings, code, SQL, emoji-only input |
+| Legal keyword check | Requires at least 1 legal term from an 80-word vocabulary |
+
+Non-legal content returns a clear `422` error with a descriptive message.
+
 ---
 
 ## ⚠️ Limitations
 
-- spaCy occasionally misclassifies legal role words (e.g. "Licensee") as persons — this is a known limitation of general-purpose NER on legal text
+- spaCy occasionally misclassifies legal role words (e.g. "Licensee") as persons — known limitation of general-purpose NER on legal text
 - Risk classifier performance depends on CUAD label distribution — uncommon clause types may have lower accuracy
 - LLM responses are non-deterministic at higher temperatures; system uses `temperature=0.2` for consistency
+- OCR accuracy depends on scan quality — very low resolution or handwritten documents may not extract well
 
 ---
 
@@ -205,13 +268,14 @@ python -m pytest tests/ -v
 - 🔊 Voice-based clause explanation
 - ☁️ Cloud deployment
 - 🤖 Fine-tuned legal-specific embedding model (legal-bert)
-- 📄 Full document upload (PDF/DOCX) instead of single clause
+- 💬 Q&A mode — ask questions about an uploaded document
+- 📊 Analytics dashboard
 
 ---
 
-## 👨‍💻 Authors
+## 👨‍💻 Author
 
-**Kshitiz Bansal** — B.Tech CSE (AIML)
+**Vansh C** — B.Tech CSE (AIML)
 
 ---
 
