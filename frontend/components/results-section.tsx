@@ -14,13 +14,13 @@ export function ResultsSection({ data }: ResultsSectionProps) {
 
   return (
     <div
-      className={`rounded-xl border transition-all duration-500 animate-fadeInUp shadow-lg ${
+      className={`rounded-xl border transition-all duration-300 ${
         isHighRisk
-          ? 'border-destructive/50 bg-destructive/5 shadow-destructive/20'
-          : 'border-border bg-card shadow-accent/10 hover:shadow-accent/20'
+          ? 'border-destructive/50 bg-destructive/5'
+          : 'border-border bg-card'
       }`}
     >
-      <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_1fr_1fr_0.8fr]" style={{ animationDelay: '200ms' }}>
+      <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[1fr_1fr_1fr_0.8fr]">
         {/* Plain English Card - spans 1 column */}
         <InfoCard
           title="Plain English"

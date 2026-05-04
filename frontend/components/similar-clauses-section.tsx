@@ -39,9 +39,9 @@ export function SimilarClausesSection({ clauses }: SimilarClausesSectionProps) {
 
   return (
     <>
-      <div className="mt-8 space-y-4 animate-fadeInUp" style={{ animationDelay: '400ms' }}>
-        <h2 className="text-3xl font-bold text-white bg-gradient-to-r from-white via-accent to-white bg-clip-text text-transparent">Similar Clauses Found in Our Database</h2>
-        <p className="text-muted-foreground leading-relaxed">
+      <div className="mt-8 space-y-4">
+        <h2 className="text-2xl font-bold text-white">Similar Clauses Found in Our Database</h2>
+        <p className="text-muted-foreground">
           Below are similar clauses we&apos;ve encountered, with their risk levels and similarity scores.
         </p>
 
@@ -65,14 +65,14 @@ export function SimilarClausesSection({ clauses }: SimilarClausesSectionProps) {
           {/* Scroll Buttons */}
           <button
             onClick={() => handleScroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-accent/80 to-accent p-2 text-accent-foreground hover:from-accent hover:to-accent hover:shadow-lg hover:shadow-accent/30 transition-all duration-300 z-10 hover:scale-110 active:scale-95"
+            className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full bg-secondary p-2 text-white hover:bg-secondary/80 transition-colors z-10"
             aria-label="Scroll left"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             onClick={() => handleScroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-accent to-accent/80 p-2 text-accent-foreground hover:from-accent hover:to-accent hover:shadow-lg hover:shadow-accent/30 transition-all duration-300 z-10 hover:scale-110 active:scale-95"
+            className="absolute right-0 top-1/2 -translate-y-1/2 rounded-full bg-secondary p-2 text-white hover:bg-secondary/80 transition-colors z-10"
             aria-label="Scroll right"
           >
             <ChevronRight className="h-5 w-5" />

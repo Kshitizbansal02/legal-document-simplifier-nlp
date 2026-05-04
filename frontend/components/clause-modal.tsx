@@ -32,44 +32,44 @@ export function ClauseModal({ clause, onClose }: ClauseModalProps) {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="animate-fadeInUp border-border bg-gradient-to-br from-card to-secondary/30 backdrop-blur-md shadow-2xl shadow-accent/10">
-        <DialogHeader className="border-b border-border/50 pb-4">
+      <DialogContent className="border-border bg-card">
+        <DialogHeader className="border-b border-border pb-4">
           <div className="flex items-start justify-between">
             <div>
-              <DialogTitle className="text-2xl bg-gradient-to-r from-white to-accent bg-clip-text text-transparent">{clause.clause_type}</DialogTitle>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <DialogTitle className="text-xl text-white">{clause.clause_type}</DialogTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
                 {Math.round(clause.score * 100)}% similarity match
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-muted-foreground hover:text-accent hover:bg-secondary/50 transition-all duration-300 p-2 rounded-lg hover:scale-110 active:scale-95"
+              className="text-muted-foreground hover:text-white transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </DialogHeader>
 
-        <div className="space-y-5 py-4">
+        <div className="space-y-4 py-4">
           {/* Full Clause Text */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold text-white">Full Clause Text</h3>
-            <p className="rounded-lg bg-gradient-to-br from-secondary/40 to-secondary/20 p-4 text-sm leading-relaxed text-white/90 backdrop-blur-sm border border-border/30 hover:border-accent/30 transition-colors duration-300">
+            <h3 className="mb-2 text-sm font-semibold text-white">Full Clause Text</h3>
+            <p className="rounded-lg bg-secondary/30 p-4 text-sm leading-relaxed text-white">
               {clause.clause_text}
             </p>
           </div>
 
           {/* Metadata */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-lg bg-secondary/30 p-4 backdrop-blur-sm border border-border/30 hover:border-accent/30 transition-colors duration-300">
-              <p className="text-xs text-muted-foreground font-medium">Risk Level</p>
-              <p className={`mt-2 font-bold text-lg capitalize ${getRiskColor(clause.risk_level)}`}>
+            <div>
+              <p className="text-xs text-muted-foreground">Risk Level</p>
+              <p className={`mt-1 font-semibold capitalize ${getRiskColor(clause.risk_level)}`}>
                 {clause.risk_level}
               </p>
             </div>
-            <div className="rounded-lg bg-secondary/30 p-4 backdrop-blur-sm border border-border/30 hover:border-accent/30 transition-colors duration-300">
-              <p className="text-xs text-muted-foreground font-medium">Similarity Score</p>
-              <p className="mt-2 font-bold text-lg text-accent">{Math.round(clause.score * 100)}%</p>
+            <div>
+              <p className="text-xs text-muted-foreground">Similarity Score</p>
+              <p className="mt-1 font-semibold text-accent">{Math.round(clause.score * 100)}%</p>
             </div>
           </div>
         </div>

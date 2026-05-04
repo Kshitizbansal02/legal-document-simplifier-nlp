@@ -1,114 +1,134 @@
 """
 services/risk.py
 ================
-Risk level prediction for a legal clause.
+Risk classification for legal clauses.
 
-TWO-TIER APPROACH
+HOW IT WORKS
+------------
+1. Embed the input clause using the shared MiniLM embedder (same as similarity.py)
+2. Pass the embedding to the trained LogisticRegression classifier (risk_clf.pkl)
+3. Return level (low/medium/high), confidence score, description, and method label
+
+WHY THE CLASSIFIER NOT THE LLM
+--------------------------------
+The risk classifier runs locally on embeddings — fast, deterministic, no API call.
+The LLM is used separately for explanation text only. Keeping risk scoring local
+means it works even if the Groq API is down, and produces consistent confidence %.
+
+REGISTRY PATTERN
 -----------------
-Tier 1 (preferred): Trained LogisticRegression classifier on top of
-    MiniLM embeddings. Gives a predicted label + confidence score.
-    Train it with: python scripts/train_risk_clf.py
-
-Tier 2 (fallback): KNN majority vote via similarity search.
-    Used automatically if the classifier model file doesn't exist yet.
-    Less accurate but requires no training step.
-
-WHY NOT JUST USE KNN?
----------------------
-The old risk.py was KNN-only, which has two problems:
-  1. No confidence score — you can't tell "barely medium" from "clearly high"
-  2. Sensitive to whatever happens to be in the top-5 similar clauses
-     (if your DB is imbalanced, you'll always predict "low")
-
-A trained classifier fixes both: it learns decision boundaries across
-the full dataset and gives calibrated probability scores.
-
-RISK LEVELS
------------
-  low    → Standard boilerplate, no unusual obligations
-  medium → Some restrictions or obligations worth reviewing
-  high   → Significant legal/financial risk, lawyer review recommended
+Follows the same pattern as similarity.py — all heavy objects (embedder, classifier)
+come from registry, which loads them once at startup. risk.py never loads models itself.
 """
 
 from __future__ import annotations
-import logging
 import numpy as np
 from services.model_registry import registry
-from services.similarity import get_similar
 
-logger = logging.getLogger(__name__)
 
-# Maps predicted label to a human-readable explanation shown in the UI
-RISK_DESCRIPTIONS: dict[str, str] = {
-    "low":    "Standard clause — no unusual obligations detected.",
-    "medium": "Contains notable restrictions or obligations. Review recommended.",
-    "high":   "Significant legal or financial risk. Legal counsel strongly advised.",
+# ─────────────────────────────────────────────
+# RISK LEVEL METADATA
+# ─────────────────────────────────────────────
+
+RISK_DESCRIPTIONS = {
+    "low": (
+        "Low risk. This clause is standard and unlikely to create "
+        "significant legal or financial obligations."
+    ),
+    "medium": (
+        "Moderate risk. This clause may have implications worth reviewing. "
+        "Consider consulting legal counsel if unsure."
+    ),
+    "high": (
+        "Significant legal or financial risk. This clause could limit your "
+        "rights or expose you to liability. Legal counsel strongly advised."
+    ),
 }
 
+# Fallback if classifier returns an unexpected label
+FALLBACK_DESCRIPTION = "Risk level could not be determined with confidence."
+
+
+# ─────────────────────────────────────────────
+# MAIN FUNCTION
+# ─────────────────────────────────────────────
 
 def predict_risk(text: str) -> dict:
     """
     Predict the risk level of a legal clause.
 
+    Parameters
+    ----------
+    text : Raw clause text (NOT anonymized — entity names don't affect embeddings
+           and keeping them improves classifier accuracy on named-party clauses).
+
     Returns
     -------
     dict with keys:
         level       : str   — "low" | "medium" | "high"
-        confidence  : float — 0.0–1.0 (how certain the model is)
-        description : str   — plain-English explanation
+        confidence  : float — model confidence in prediction (0–1)
+        description : str   — plain English description of the risk level
         method      : str   — "classifier" | "knn_fallback"
 
-    Example
-    -------
-    >>> predict_risk("The licensee shall not sublicense or transfer any rights.")
-    {
-        "level": "high",
-        "confidence": 0.87,
-        "description": "Significant legal or financial risk...",
-        "method": "classifier"
-    }
+    Raises
+    ------
+    RuntimeError if models are not loaded yet.
     """
-    vec = registry.embedder.encode([text], normalize_embeddings=True)
+    if not registry.is_ready:
+        raise RuntimeError("Models not loaded. Did startup complete?")
 
-    # ── Tier 1: trained classifier ───────────────────────────────────────────
-    if registry.risk_clf is not None:
-        label: str = registry.risk_clf.predict(vec)[0]
-        # predict_proba gives confidence per class; take the winning class prob
-        proba: np.ndarray = registry.risk_clf.predict_proba(vec)[0]
-        confidence = float(proba.max())
+    # ── Embed the clause ──────────────────────────────────────────────────────
+    # Use the shared embedder — same model used to build the clause DB
+    embedding = registry.embedder.encode([text], normalize_embeddings=True)
 
-        return {
-            "level":       label,
-            "confidence":  round(confidence, 3),
-            "description": RISK_DESCRIPTIONS.get(label, ""),
-            "method":      "classifier",
-        }
+    # ── Classify ──────────────────────────────────────────────────────────────
+    try:
+        clf        = registry.risk_clf
+        prediction = clf.predict(embedding)[0]           # "low" / "medium" / "high"
+        proba      = clf.predict_proba(embedding)[0]     # probability per class
+        confidence = float(np.max(proba))
+        method     = "classifier"
 
-    # ── Tier 2: KNN fallback ─────────────────────────────────────────────────
-    logger.warning("Risk classifier not available — using KNN fallback.")
-    similar = get_similar(text, top_k=7)
+    except Exception:
+        # ── KNN fallback: if classifier fails, use cosine similarity to
+        #    nearest clause in DB and inherit its risk label ──────────────────
+        prediction, confidence, method = _knn_fallback(embedding)
 
-    if not similar:
-        return {
-            "level":       "unknown",
-            "confidence":  0.0,
-            "description": "Could not determine risk — no similar clauses found.",
-            "method":      "knn_fallback",
-        }
-
-    # Weighted vote: weight each neighbour's vote by its similarity score
-    vote_weights: dict[str, float] = {}
-    for item in similar:
-        lvl = item["risk_level"]
-        vote_weights[lvl] = vote_weights.get(lvl, 0.0) + item["score"]
-
-    winner = max(vote_weights, key=vote_weights.__getitem__)
-    total  = sum(vote_weights.values())
-    confidence = round(vote_weights[winner] / total, 3)
+    # ── Normalise label ───────────────────────────────────────────────────────
+    level = str(prediction).lower().strip()
+    if level not in RISK_DESCRIPTIONS:
+        level = "medium"   # safe default for unexpected labels
 
     return {
-        "level":       winner,
-        "confidence":  confidence,
-        "description": RISK_DESCRIPTIONS.get(winner, ""),
-        "method":      "knn_fallback",
-    } 
+        "level"      : level,
+        "confidence" : round(confidence, 4),
+        "description": RISK_DESCRIPTIONS[level],
+        "method"     : method,
+    }
+
+
+# ─────────────────────────────────────────────
+# KNN FALLBACK
+# ─────────────────────────────────────────────
+
+def _knn_fallback(embedding: np.ndarray) -> tuple[str, float, str]:
+    """
+    Emergency fallback when the sklearn classifier fails.
+    Finds the nearest clause in the DB by cosine similarity
+    and inherits its risk label.
+
+    Returns (level, confidence, method_label)
+    """
+    from sklearn.metrics.pairwise import cosine_similarity
+
+    scores = cosine_similarity(embedding, registry.clause_embeddings)[0]
+    best_idx = int(np.argmax(scores))
+    best_score = float(scores[best_idx])
+
+    row = registry.clauses_df.iloc[best_idx]
+    level = str(row.get("risk_level", "medium")).lower().strip()
+
+    if level not in RISK_DESCRIPTIONS:
+        level = "medium"
+
+    return level, best_score, "knn_fallback"

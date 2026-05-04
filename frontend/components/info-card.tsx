@@ -22,19 +22,17 @@ export function InfoCard({
   className = '',
 }: InfoCardProps) {
   return (
-    <div className={`group flex flex-col rounded-lg border border-border bg-gradient-to-br from-secondary/40 to-secondary/20 p-5 backdrop-blur-sm transition-all duration-300 hover:border-accent/50 hover:shadow-lg hover:shadow-accent/10 hover-lift ${className}`}>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-accent/10 group-hover:bg-accent/20 transition-colors duration-300 text-accent">
-            {icon}
-          </div>
-          <h3 className="font-semibold text-white group-hover:text-accent transition-colors duration-300">{title}</h3>
+    <div className={`flex flex-col rounded-lg border border-border bg-secondary/30 p-4 ${className}`}>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="text-muted-foreground">{icon}</div>
+          <h3 className="font-semibold text-white">{title}</h3>
         </div>
         {tooltip && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="text-muted-foreground hover:text-accent transition-colors duration-300">
+                <button className="text-muted-foreground hover:text-accent transition-colors">
                   <HelpCircle className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
@@ -44,10 +42,10 @@ export function InfoCard({
         )}
       </div>
       <p
-        className={`flex-1 text-sm leading-relaxed transition-colors duration-300 ${
+        className={`flex-1 text-sm leading-relaxed ${
           isMonospace
-            ? 'font-mono text-xs text-muted-foreground group-hover:text-foreground/80'
-            : 'text-muted-foreground group-hover:text-foreground/90'
+            ? 'font-mono text-xs text-muted-foreground'
+            : 'text-muted-foreground'
         }`}
       >
         {content}

@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Legal Clause Analyzer',
-  description: 'Understand, simplify, and analyze legal contracts with AI',
+  title: 'Legal Document Analyzer',
+  description: 'Analyze contracts and legal documents for risks and compliance issues',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -35,8 +35,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="bg-background">
-      <body className="font-sans antialiased">
+    <html lang="en" className="bg-background dark">
+      <body className="font-sans antialiased bg-background text-foreground">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

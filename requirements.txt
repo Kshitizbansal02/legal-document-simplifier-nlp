@@ -6,3 +6,22 @@ Pillow>=10.0.0
 numpy>=1.24.0
 python-multipart==0.0.9
 psutil>=5.9.0
+PyMuPDF==1.24.5
+pytesseract==0.3.13
+Pillow==10.3.0
+
+# ─────────────────────────────────────────────
+# SYSTEM DEPENDENCY (install separately)
+# ─────────────────────────────────────────────
+# Tesseract OCR must be installed at the OS level:
+#
+# Windows:
+#   Download installer from https://github.com/UB-Mannheim/tesseract/wiki
+#   Add to PATH or set in file_extractor.py:
+#   pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+#
+# Ubuntu/Debian:
+#   sudo apt-get install tesseract-ocr
+#
+# macOS:
+#   brew install tesseract

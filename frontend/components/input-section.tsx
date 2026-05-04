@@ -47,51 +47,46 @@ export function InputSection({ onAnalyze, isLoading }: InputSectionProps) {
   };
 
   return (
-    <div className="animate-fadeInUp rounded-xl border border-border bg-card p-6 sm:p-8 backdrop-blur-sm space-y-6 hover-lift shadow-lg hover:shadow-2xl transition-all duration-300">
+    <div className="space-y-6 rounded-xl border border-border bg-card p-6 sm:p-8">
       {/* Textarea */}
-      <div className="relative group">
-        <label className="block text-sm font-semibold text-white mb-3">Paste Your Legal Clause</label>
+      <div className="relative">
         <textarea
           value={text}
           onChange={handleTextChange}
           placeholder="Paste your legal clause here…"
-          className="w-full min-h-48 rounded-lg border border-border bg-input px-4 py-3 text-white placeholder:text-muted-foreground outline-none transition-all duration-300 focus:border-accent focus:ring-2 focus:ring-accent/30 focus:shadow-lg focus:shadow-accent/20"
+          className="w-full min-h-48 rounded-lg border border-border bg-input px-4 py-3 text-white placeholder:text-muted-foreground outline-none transition-all duration-200 focus:border-accent focus:ring-2 focus:ring-accent/30"
         />
-        <div className="absolute bottom-3 right-3 text-sm text-muted-foreground bg-background/50 px-2 py-1 rounded-md backdrop-blur-sm font-medium">
+        <div className="absolute bottom-3 right-3 text-sm text-muted-foreground">
           {wordCount} words
         </div>
       </div>
 
       {/* Sample Buttons */}
-      <div>
-        <label className="block text-sm font-semibold text-white mb-3">Try Sample Clauses</label>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {Object.entries(SAMPLE_CLAUSES).map(([key], index) => (
-            <Button
-              key={key}
-              onClick={() => handleSampleClick(key as keyof typeof SAMPLE_CLAUSES)}
-              variant="outline"
-              className="border-border hover:bg-secondary/50 hover:border-accent transition-all duration-300 hover-lift text-white font-medium"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              {key}
-            </Button>
-          ))}
-        </div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {Object.entries(SAMPLE_CLAUSES).map(([key]) => (
+          <Button
+            key={key}
+            onClick={() => handleSampleClick(key as keyof typeof SAMPLE_CLAUSES)}
+            variant="outline"
+            className="border-border hover:bg-secondary/50"
+          >
+            {key}
+          </Button>
+        ))}
       </div>
 
       {/* Analyze Button */}
-      <div className="flex justify-center pt-6">
+      <div className="flex justify-center pt-4">
         <Button
           onClick={handleAnalyze}
           disabled={!text.trim() || isLoading}
           size="lg"
-          className="min-w-56 bg-gradient-to-r from-accent to-accent/80 text-accent-foreground hover:from-accent hover:to-accent font-semibold shadow-lg hover:shadow-accent/30 disabled:opacity-50 disabled:shadow-none transition-all duration-300 hover:scale-105"
+          className="min-w-48 bg-accent text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
         >
           {isLoading ? (
             <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Analyzing Your Clause…
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Analyzing…
             </>
           ) : (
             'Analyze Clause'
