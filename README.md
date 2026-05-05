@@ -19,10 +19,6 @@ Built as an NLP mini-project using a six-stage pipeline: OCR/file extraction →
 
 ## 🤔 How Is This Different From ChatGPT?
 
-When you ask ChatGPT to simplify a legal clause, it guesses from training data — it has no access to real labeled contracts and no way to show you what similar clauses look like in practice.
-
-This system is different:
-
 | Feature | This System | ChatGPT |
 |---|---|---|
 | Privacy | Anonymizes entities before any LLM call | Sends raw text to external API |
@@ -135,46 +131,173 @@ The clause database and risk classifier are trained on the **CUAD (Contract Unde
 
 ## ▶️ Setup
 
+### Prerequisites
+
+- Python 3.13+
+- Node.js 18+
+- A free [Groq API key](https://console.groq.com)
+
+---
+
+### 1. Clone the repository
+
 ```bash
-# Clone the repository
 git clone https://github.com/Kshitizbansal02/legal-document-simplifier-nlp.git
-cd legal-document-simplifier-nlp/backend
+cd legal-document-simplifier-nlp
+```
+
+---
+
+### 2. Backend setup
+
+```bash
+cd backend
 
 # Create and activate virtual environment
 python -m venv venv
 venv\Scripts\activate        # Windows
 source venv/bin/activate     # Mac/Linux
 
-# Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
+
+# If PyMuPDF fails on Python 3.13 (no pre-built wheel for 1.24.5):
+pip install PyMuPDF==1.24.11
+
+# If FastAPI raises a python-multipart error:
+pip install "python-multipart>=0.0.13"
+
+# Download spaCy language model
 python -m spacy download en_core_web_sm
+```
 
-# Install Tesseract OCR (required for image/scanned PDF support)
-# Windows: https://github.com/UB-Mannheim/tesseract/wiki
-# Ubuntu:  sudo apt-get install tesseract-ocr
-# macOS:   brew install tesseract
+---
 
-# Set your Groq API key
-echo GROQ_API_KEY=your_key_here > .env
+### 3. Install Tesseract OCR
 
-# Train the risk classifier (run once)
+Tesseract must be installed at the OS level — it is not a Python package.
+
+**Windows:**
+1. Download the installer from [UB Mannheim](https://github.com/UB-Mannheim/tesseract/wiki)
+2. Install it (default path: `C:\Program Files\Tesseract-OCR\`)
+3. Open `services/file_extractor.py` and set:
+```python
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install tesseract-ocr
+```
+
+**macOS:**
+```bash
+brew install tesseract
+```
+
+Verify:
+```bash
+tesseract --version   # should print: tesseract v5.x.x
+```
+
+---
+
+### 4. Configure environment variables
+
+Create `backend/.env` and add your Groq API key:
+```
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+Get a free key at [console.groq.com](https://console.groq.com).
+
+---
+
+### 5. Train the risk classifier
+
+> ⚠️ Required. The backend will fail to start if `models/risk_clf.pkl` does not exist.
+
+```bash
+# From backend/ folder
 python scripts/Train_risk.py
+```
 
-# Start the API
+Run once — no need to retrain unless the dataset changes.
+
+---
+
+### 6. Configure pytest (required for tests)
+
+Create `backend/pytest.ini`:
+```ini
+[pytest]
+pythonpath = .
+```
+
+---
+
+### 7. Start the backend
+
+```bash
+# From backend/ folder
 uvicorn main:app --reload
 ```
 
-API docs available at: `http://localhost:8000/docs`
+- **API:** `http://localhost:8000`
+- **Swagger docs:** `http://localhost:8000/docs`
+
+Wait for `INFO: Application startup complete.` before making requests.
+
+---
+
+### 8. Frontend setup
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Create environment file
+echo NEXT_PUBLIC_API_URL=http://localhost:8000 > .env.local
+
+# Start the dev server
+npm run dev
+```
+
+Frontend runs at `http://localhost:3000` (or `3001` if 3000 is in use).
+
+> Make sure the backend is running before using the frontend.
+
+---
+
+### 9. Verify everything works
+
+```bash
+# From backend/ folder — create and test a sample PDF
+python -c "
+import fitz, requests
+doc = fitz.open()
+page = doc.new_page()
+page.insert_text((72, 72), 'The Licensee shall not assign or sublicense any rights without prior written consent.')
+doc.save('test_clause.pdf')
+with open('test_clause.pdf', 'rb') as f:
+    r = requests.post('http://localhost:8000/api/v1/upload', files={'file': ('test_clause.pdf', f, 'application/pdf')})
+    print(r.status_code)   # 200
+    print(r.json()['risk']['level'])  # low / medium / high
+"
+```
 
 ---
 
 ## 🧪 Running Tests
 
 ```bash
+# From backend/ folder
 python -m pytest tests/ -v
 ```
 
-55 tests across 6 categories:
+55 tests across 8 categories:
 - `TestHealth` — API startup and model loading
 - `TestAnonymizer` — NER entity detection and restoration
 - `TestSimilarity` — embedding search and score ordering
@@ -220,7 +343,11 @@ python -m pytest tests/ -v
 
 ### `POST /api/v1/upload`
 
-**Request:** multipart/form-data with `file` field (PDF or image)
+**Request:** `multipart/form-data` with a `file` field
+
+**Supported formats:** `.pdf`, `.png`, `.jpg`, `.jpeg`, `.tiff`, `.bmp`, `.webp`
+
+**Max file size:** 10 MB
 
 **Response:** Same as `/analyze` plus:
 ```json
@@ -234,22 +361,30 @@ python -m pytest tests/ -v
 }
 ```
 
-**Validation errors (422):** Returned when uploaded file does not contain legal text.
+**Error codes:**
+
+| Code | Meaning |
+|---|---|
+| 400 | Empty file |
+| 413 | File exceeds 10 MB |
+| 415 | Unsupported file type |
+| 422 | Non-legal content detected or insufficient text extracted |
+| 503 | Models still loading — retry in a few seconds |
 
 ---
 
 ## 🛡️ Input Validation
 
-The system validates all input (text and file uploads) before processing:
+All input is validated before entering the NLP pipeline:
 
-| Check | Description |
+| Check | Rule |
 |---|---|
 | Length | Minimum 20 characters, maximum 50,000 |
 | Word count | Minimum 5 words |
-| Pattern rejection | Blocks greetings, code, SQL, emoji-only input |
+| Pattern rejection | Blocks greetings, code snippets, SQL queries, emoji-only input |
 | Legal keyword check | Requires at least 1 legal term from an 80-word vocabulary |
 
-Non-legal content returns a clear `422` error with a descriptive message.
+Non-legal content returns a `422` error with a descriptive message.
 
 ---
 
@@ -257,8 +392,9 @@ Non-legal content returns a clear `422` error with a descriptive message.
 
 - spaCy occasionally misclassifies legal role words (e.g. "Licensee") as persons — known limitation of general-purpose NER on legal text
 - Risk classifier performance depends on CUAD label distribution — uncommon clause types may have lower accuracy
-- LLM responses are non-deterministic at higher temperatures; system uses `temperature=0.2` for consistency
+- LLM responses are non-deterministic; system uses `temperature=0.2` for consistency
 - OCR accuracy depends on scan quality — very low resolution or handwritten documents may not extract well
+- PyMuPDF `1.24.5` has no pre-built wheel for Python 3.13 on Windows — use `1.24.11+`
 
 ---
 
